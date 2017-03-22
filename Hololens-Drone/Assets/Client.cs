@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text;
 using System.IO;
@@ -12,13 +12,9 @@ using Windows.Storage.Streams;
 public class Client : MonoBehaviour
 {
 #if UNITY_EDITOR
-    void Start(){
-    }
+    void Start(){}
      // Update is called once per frame
-    void Update()
-    {
-   
-    }
+    void Update(){}
 #endif
 #if WINDOWS_UWP
     public StreamSocket socket;
@@ -26,22 +22,34 @@ public class Client : MonoBehaviour
     async void Start()
     {
         Debug.Log("---STARTING CLIENT---");
-        await connect("152.23.104.106", "5717");
+        await connect("152.23.42.40", "5717");
         Debug.Log("---SENDING MESSEGES---");
-        await send("please");
-        await send("work");
-        await send("jan");
-        await send("will");
-        await send("be");
-        await send("pleased");
-        await send("quit");
+        while (true)
+        {
+            //sendCameraRotation();
+            Debug.Log(transform.eulerAngles.x + " " + transform.eulerAngles.y + " " + transform.eulerAngles.z);
+            Task.Delay(5000);
+        }
+        await send("QUIT");
         socket.Dispose();
         Debug.Log("---ENDING CLIENT---");
+    }
 
+    async public void sendCameraRotation()
+    {
+        /* await send("s");
+         Task.Delay(5);
+         await send(transform.rotation.eulerAngles.x.ToString());
+         Task.Delay(5);
+         await send(transform.rotation.eulerAngles.y.ToString());
+         Task.Delay(5);
+         await send(transform.rotation.eulerAngles.z.ToString());
+         Task.Delay(5);*/
     }
 
     public async Task connect(string host, string port)
     {
+        Debug.Log("---ATTEMPTING TO CONNECT TO SERVER");
         HostName hostName;
         socket = new StreamSocket();
         hostName = new HostName(host);

@@ -92,6 +92,7 @@ public class Client : MonoBehaviour
                     Debug.Log("--------------");
                     throw;
             }
+
         }
     }
 

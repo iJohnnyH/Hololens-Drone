@@ -23,15 +23,9 @@ public class Client : MonoBehaviour
     async void Start()
     {
         Debug.Log("---STARTING CLIENT---");
-        await connect("152.23.111.43", "5717");
+        await connect("152.23.73.180", "5717");
         Debug.Log("---SENDING MESSEGES---");
 
-        /*await sendCameraRotation(-300, -600, -1500);
-        await waitAvail();
-        await sendCameraRotation(0, 0, 0);
-        await waitAvail();
-        await sendCameraRotation(300, 200, 1700);
-        await waitAvail();*/
         while (true)
         {
             await sendRandomCameraAngles();
@@ -44,14 +38,18 @@ public class Client : MonoBehaviour
 
     async public Task sendCameraRotation()
     {
-        /* await send("s");
-         Task.Delay(5);
-         await send(transform.rotation.eulerAngles.x.ToString());
-         Task.Delay(5);
-         await send(transform.rotation.eulerAngles.y.ToString());
-         Task.Delay(5);
-         await send(transform.rotation.eulerAngles.z.ToString());
-         Task.Delay(5);*/
+        //x: Pitch y:Yaw Z:Roll
+        //x:+Pitch Up -Pitch Down y:+Yaw right -Yaw left Z:+Roll Counterclockwise -Roll Clockwise
+        await send("s");
+        await Task.Delay(10);
+        float roll = transform.rotation.eulerAngles.z, pitch = transform.rotation.eulerAngles.x, yaw = transform.rotation.eulerAngles.y;
+        await send(roll.ToString());
+        await Task.Delay(5);
+        await send(pitch.ToString());
+        await Task.Delay(5);
+        await send(yaw.ToString());
+        await Task.Delay(5);
+        avail = "";
     }
 
     async public Task sendCameraRotation(float x, float y, float z)

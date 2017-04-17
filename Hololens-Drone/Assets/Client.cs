@@ -9,63 +9,141 @@ using Windows.Networking;
 using Windows.Networking.Sockets;
 using Windows.Storage.Streams;
 #endif
+
 public class Client : MonoBehaviour
 {
+    public Camera mainCamera;
+    public String angles;
 #if UNITY_EDITOR
     void Start(){}
      // Update is called once per frame
     void Update(){}
 #endif
+    public void updateCameraAngles()
+    {
+        float roll = mainCamera.transform.rotation.eulerAngles.z, pitch = mainCamera.transform.rotation.eulerAngles.x, yaw = mainCamera.transform.rotation.eulerAngles.y;
+        roll = convertRoll(roll);
+        pitch = convertPitch(pitch);
+        yaw = convertYaw(yaw);
+        angles = roll.ToString("F") + " " + pitch.ToString("F") + " " + yaw.ToString("F");
+        //Debug.Log(mainCamera.transform.rotation.eulerAngles.z.ToString() + " " + mainCamera.transform.rotation.eulerAngles.x.ToString() + " " + mainCamera.transform.rotation.eulerAngles.y.ToString());
+    }
+
+    private float convertRoll(float roll)
+    {
+        if (roll > 35 && roll <= 180)
+        {
+            roll = 35;
+        }
+        else if (roll > 180 && roll < 325)
+        {
+            roll = -35;
+        }
+        else if (roll >= 325)
+        {
+            roll = roll - 360;
+        }
+
+        return roll * 10;
+    }
+
+    private float convertPitch(float pitch)
+    {
+        //Range checks
+        if (pitch > 90 && pitch < 180)
+        {
+            pitch = 90;
+        }
+        else if (pitch > 180 && pitch < 330)
+        {
+            pitch = 330;
+        }
+        //Convert to drone angles [-900, 300], 30 degrees above horizontal, 90 degrees below horizontal
+        if (pitch <= 90)
+        {
+            pitch *= -1;
+        }
+        else if (pitch >= 330)
+        {
+            pitch = 360 - pitch;
+        }
+        //Range checks
+        return pitch * 10;
+    }
+
+    private float convertYaw(float yaw)
+    {
+        if (yaw >= 0 && yaw <= 180)
+        {
+
+        }
+        else if (yaw > 180)
+        {
+            yaw = yaw - 360;
+        }
+        return yaw * 10;
+    }
+
 #if WINDOWS_UWP
     public StreamSocket socket;
     String avail = "TRUE";
+
     // Use this for initialization
-    async void Start()
+    /*
+     * Hololens Rotations
+     * X:
+     */
+
+    async public void Start()
     {
         Debug.Log("---STARTING CLIENT---");
-        await connect("152.23.73.180", "5717");
+        angles = "0 0 0";
+        InvokeRepeating("updateCameraAngles", 0, 1);
+        //await connect("192.168.43.159", "5717");
+        await connect("152.23.48.106", "5771");
         Debug.Log("---SENDING MESSEGES---");
-
         while (true)
         {
-            await sendRandomCameraAngles();
+            await send("s");
+            await waitAvail();
+            await send(angles);
             await waitAvail();
         }
-        await send("QUIT");
         socket.Dispose();
         Debug.Log("---ENDING CLIENT---");
+        await send("QUIT");
     }
 
-    async public Task sendCameraRotation()
+    async private Task sendCameraAngles()
     {
-        //x: Pitch y:Yaw Z:Roll
-        //x:+Pitch Up -Pitch Down y:+Yaw right -Yaw left Z:+Roll Counterclockwise -Roll Clockwise
         await send("s");
-        await Task.Delay(10);
-        float roll = transform.rotation.eulerAngles.z, pitch = transform.rotation.eulerAngles.x, yaw = transform.rotation.eulerAngles.y;
-        await send(roll.ToString());
-        await Task.Delay(5);
-        await send(pitch.ToString());
-        await Task.Delay(5);
-        await send(yaw.ToString());
-        await Task.Delay(5);
-        avail = "";
+        await waitAvail();
+        float roll = mainCamera.transform.rotation.eulerAngles.z, pitch = mainCamera.transform.rotation.eulerAngles.x, yaw = mainCamera.transform.rotation.eulerAngles.y;
+        await send(roll.ToString("F") + " " + pitch.ToString("F") + " " + yaw.ToString("F"));
+        await waitAvail();
     }
 
-    async public Task sendCameraRotation(float x, float y, float z)
+    async private Task sendCameraAngles(double x, double y, double z)
     {
         await send("s");
         await Task.Delay(10);
-        await send(x.ToString());
-        await Task.Delay(10);
-        await send(y.ToString());
-        await Task.Delay(10);
-        await send(z.ToString());
-        await Task.Delay(10);
+        await send(x.ToString() + " " + y.ToString() + " " + z.ToString());
         avail = "";
     }
 
-    public async Task connect(string host, string port)
+    private async Task sendRandomCameraAngles()
+    {
+        System.Random seed = new System.Random();
+        float roll = (float)seed.Next(-350, 351);
+        float pitch = (float)seed.Next(-900, 301);
+        float yaw = (float)seed.Next(-3200, 3201);
+        await send("s");
+        await Task.Delay(10);
+        await send(roll.ToString() + " " + pitch.ToString() + " " + yaw.ToString());
+        avail = "";
+    }
+
+    async private Task connect(string host, string port)
     {
         Debug.Log("---ATTEMPTING TO CONNECT TO SERVER---");
         HostName hostName;
@@ -96,7 +174,7 @@ public class Client : MonoBehaviour
         }
     }
 
-    public async Task send(string message)
+    async private Task send(string message)
     {
         DataWriter writer = new DataWriter(socket.OutputStream);
         // Set the Unicode character encoding for the output stream
@@ -134,9 +212,10 @@ public class Client : MonoBehaviour
         // In order to prolong the lifetime of the stream, detach it from the DataWriter
         writer.DetachStream();
         writer.Dispose();
+        avail = "";
     }
 
-    public async Task recieve()
+    async private Task recieve()
     {
         DataReader reader = new DataReader(socket.InputStream);
         reader.UnicodeEncoding = Windows.Storage.Streams.UnicodeEncoding.Utf8;
@@ -144,30 +223,15 @@ public class Client : MonoBehaviour
         reader.InputStreamOptions = InputStreamOptions.Partial;
         var count = await reader.LoadAsync(4);
         avail = reader.ReadString(count);
-        Debug.Log(avail);
     }
 
-    public async Task waitAvail()
+    async private Task waitAvail()
     {
         while (avail != "TRUE")
         {
             await recieve();
         }
     }
-
-    public async Task sendRandomCameraAngles()
-    {
-        System.Random seed = new System.Random();
-        float roll = (float)seed.Next(-350, 351), pitch = (float)seed.Next(-900, 301), yaw = (float)seed.Next(-3200, 3201);
-        await send("s");
-        await Task.Delay(10);
-        await send(roll.ToString());
-        await Task.Delay(5);
-        await send(pitch.ToString());
-        await Task.Delay(5);
-        await send(yaw.ToString());
-        await Task.Delay(5);
-        avail = "";
-    }
 #endif
+
 }
